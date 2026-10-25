@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:clipboard/clipboard.dart';
-import 'package:youtube_explode_dart/youtube_explode_dart.dart'; // ضروري لقراءة نوع الجودة
+import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'theme.dart';
 import 'download_service.dart';
 
@@ -22,11 +22,60 @@ class AbsStreamApp extends StatelessWidget {
       builder: (context, child) {
         return Directionality(textDirection: TextDirection.rtl, child: child!);
       },
-      home: const HomeScreen(),
+      home: const MainNavigationScreen(), // شاشة التنقل الرئيسية
     );
   }
 }
 
+// ==========================================
+// 1. شاشة التنقل الرئيسية (Bottom Nav)
+// ==========================================
+class MainNavigationScreen extends StatefulWidget {
+  const MainNavigationScreen({super.key});
+
+  @override
+  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+}
+
+class _MainNavigationScreenState extends State<MainNavigationScreen> {
+  int _currentIndex = 0;
+
+  // قائمة الشاشات
+  final List<Widget> _screens = [
+    const HomeScreen(),         // شاشة التحميل (الرئيسية)
+    const Center(child: Text('سجل التحميلات (سيتم إضافته قريباً)', style: TextStyle(color: Colors.white))),
+    const Center(child: Text('المشغل المدمج (سيتم إضافته قريباً)', style: TextStyle(color: Colors.white))),
+    const Center(child: Text('الإعدادات وتغيير اللغة (سيتم إضافته قريباً)', style: TextStyle(color: Colors.white))),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        backgroundColor: AppTheme.cardBg,
+        selectedItemColor: AppTheme.secondary,
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'الرئيسية'),
+          BottomNavigationBarItem(icon: Icon(Icons.download_rounded), label: 'التحميلات'),
+          BottomNavigationBarItem(icon: Icon(Icons.play_circle_fill_rounded), label: 'المشغل'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: 'الإعدادات'),
+        ],
+      ),
+    );
+  }
+}
+
+// ==========================================
+// 2. شاشة التحميل الرئيسية (الكود السابق)
+// ==========================================
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -51,8 +100,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('AbsStream',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('AbsStream', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
           Container(
@@ -63,9 +111,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.green),
             ),
-            child: const Center(
-                child: Text('جاهز',
-                    style: TextStyle(color: Colors.green, fontSize: 12))),
+            child: const Center(child: Text('جاهز', style: TextStyle(color: Colors.green, fontSize: 12))),
           )
         ],
       ),
@@ -89,8 +135,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 children: [
                   const Text('منزل الفيديوهات والصوتيات الذكي ✨',
                       textAlign: TextAlign.center,
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
                   Text('انسخ رابط الفيديو وسيتكفل AbsStream بجلبه لك.',
                       textAlign: TextAlign.center,
@@ -99,14 +144,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      FaIcon(FontAwesomeIcons.youtube,
-                          color: Colors.red, size: 20),
+                      FaIcon(FontAwesomeIcons.youtube, color: Colors.red, size: 20),
                       SizedBox(width: 15),
-                      FaIcon(FontAwesomeIcons.tiktok,
-                          color: Colors.white, size: 20),
+                      FaIcon(FontAwesomeIcons.tiktok, color: Colors.white, size: 20),
                       SizedBox(width: 15),
-                      FaIcon(FontAwesomeIcons.instagram,
-                          color: Colors.pink, size: 20),
+                      FaIcon(FontAwesomeIcons.instagram, color: Colors.pink, size: 20),
                     ],
                   )
                 ],
@@ -121,9 +163,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 hintText: 'www.youtube.com/watch?v=...',
                 filled: true,
                 fillColor: AppTheme.cardBg,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.link, color: AppTheme.secondary),
                   onPressed: () async {
@@ -142,14 +182,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primary,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: state.isLoading 
-                  ? null 
-                  : () {
-                      ref.read(downloadProvider.notifier).fetchInfo(_urlController.text);
-                    },
+                onPressed: state.isLoading ? null : () {
+                  ref.read(downloadProvider.notifier).fetchInfo(_urlController.text);
+                },
                 child: state.isLoading && state.progress == null
                   ? const CircularProgressIndicator(color: Colors.white)
                   : const Text('تحليل الرابط ⚡', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -158,41 +195,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
             const SizedBox(height: 20),
 
-            // عرض الخطأ إن وجد
+            // عرض الخطأ
             if (state.errorMessage != null)
-              Text(state.errorMessage!, style: const TextStyle(color: Colors.red)),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                child: Text(state.errorMessage!, style: const TextStyle(color: Colors.red)),
+              ),
 
-            // عرض نتائج التحليل والجودات
+            // عرض النتائج
             if (state.videoTitle != null) ...[
-              Text('الفيديو: ${state.videoTitle}', 
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), 
-                textAlign: TextAlign.center),
+              Text('الفيديو: ${state.videoTitle}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), textAlign: TextAlign.center),
               const SizedBox(height: 15),
               
-              // شريط التحميل
               if (state.progress != null && !state.isCompleted)
                 Column(
                   children: [
                     LinearProgressIndicator(value: state.progress, color: AppTheme.secondary, minHeight: 8),
                     const SizedBox(height: 10),
-                    Text('جاري التحميل: ${(state.progress! * 100).toStringAsFixed(0)}%', 
-                      style: const TextStyle(color: AppTheme.secondary)),
+                    Text('جاري التحميل: ${(state.progress! * 100).toStringAsFixed(0)}%', style: const TextStyle(color: AppTheme.secondary)),
                   ],
                 ),
 
-              // رسالة النجاح
               if (state.isCompleted)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 10),
                   child: Text('✅ تم الحفظ في الاستوديو بنجاح!', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
                 ),
 
-              // ----------------------------------------------------
-              // تعديل هام: التفرقة بين يوتيوب (جودات) وباقي المنصات (زر واحد)
-              // ----------------------------------------------------
               if (!state.isLoading && !state.isCompleted) ...[
-                
-                // 1. يوتيوب: عرض أزرار الجودات
                 if (state.availableQualities != null && state.availableQualities!.isNotEmpty)
                   Wrap(
                     spacing: 10,
@@ -202,15 +233,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       return ElevatedButton(
                         style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cardBg),
                         onPressed: () {
-                          // تم تعديل اسم الدالة إلى downloadMedia
                           ref.read(downloadProvider.notifier).downloadMedia(quality: quality);
                         },
                         child: Text(quality.name, style: const TextStyle(color: AppTheme.secondary)),
                       );
                     }).toList(),
                   )
-                
-                // 2. المنصات الأخرى (تيك توك/إنستغرام): عرض زر تحميل مباشر
                 else if (state.directDownloadUrl != null)
                   SizedBox(
                     width: double.infinity,
