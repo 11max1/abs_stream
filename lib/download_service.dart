@@ -3,12 +3,11 @@ import 'package:yt_downloader/yt_downloader.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
-// تعريف الحالة التي ستقرأها الواجهة
 class DownloadState {
   final bool isLoading;
   final String? errorMessage;
   final String? videoTitle;
-  final List<Format>? availableFormats;
+  final List<VideoQuality>? availableQualities; // تم التعديل هنا
   final double? progress;
   final bool isCompleted;
 
@@ -16,7 +15,7 @@ class DownloadState {
     this.isLoading = false,
     this.errorMessage,
     this.videoTitle,
-    this.availableFormats,
+    this.availableQualities,
     this.progress,
     this.isCompleted = false,
   });
@@ -25,7 +24,7 @@ class DownloadState {
     bool? isLoading,
     String? errorMessage,
     String? videoTitle,
-    List<Format>? availableFormats,
+    List<VideoQuality>? availableQualities,
     double? progress,
     bool? isCompleted,
   }) {
@@ -33,14 +32,13 @@ class DownloadState {
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage,
       videoTitle: videoTitle ?? this.videoTitle,
-      availableFormats: availableFormats ?? this.availableFormats,
+      availableQualities: availableQualities ?? this.availableQualities,
       progress: progress ?? this.progress,
       isCompleted: isCompleted ?? this.isCompleted,
     );
   }
 }
 
-// مزود الخدمة لربطه بالواجهة
 final downloadProvider = StateNotifierProvider<DownloadNotifier, DownloadState>((ref) {
   return DownloadNotifier();
 });
@@ -49,38 +47,47 @@ class DownloadNotifier extends StateNotifier<DownloadState> {
   DownloadNotifier() : super(DownloadState());
   final YtDownloader _yt = YtDownloader();
 
-  // 1. دالة جلب معلومات الفيديو
   Future<void> fetchInfo(String url) async {
     if (url.isEmpty) {
       state = state.copyWith(errorMessage: 'الرجاء إدخال رابط صحيح', isLoading: false);
       return;
     }
-    
-    // تصفير الحالة قبل البدء
     state = DownloadState(isLoading: true);
 
     try {
       final info = await _yt.getInfo(url);
+      
+      // جلب الجودات المتاحة من المكتبة
+      final qualities = info.formats.videoWithAudio
+          .map((format) => format.quality)
+          .whereType<VideoQuality>()
+          .toSet()
+          .toList();
+
       state = state.copyWith(
         isLoading: false,
         videoTitle: info.title,
-        availableFormats: info.formats.videoWithAudio, // جلب الجودات التي تحتوي على صوت وصورة
+        availableQualities: qualities,
       );
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: 'تعذر جلب الفيديو، تأكد من الرابط');
     }
   }
 
-  // 2. دالة التحميل
-  Future<void> downloadVideo(String url, Format format) async {
+  Future<void> downloadVideo(String url, VideoQuality quality) async {
     state = state.copyWith(isLoading: true, progress: 0.0, isCompleted: false);
 
     try {
       final info = await _yt.getInfo(url);
       final dir = await getApplicationDocumentsDirectory();
-      // تنظيف اسم الملف من الرموز الغريبة
       final safeTitle = info.title.replaceAll(RegExp(r'[^\w\s]+'), '');
       final outputPath = p.join(dir.path, '$safeTitle.mp4');
+
+      final format = info.formats.forQuality(quality);
+      if (format == null) {
+        state = state.copyWith(isLoading: false, errorMessage: 'الجودة المطلوبة غير متوفرة');
+        return;
+      }
 
       await info.download(
         format: format,
