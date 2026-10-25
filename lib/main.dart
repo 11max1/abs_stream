@@ -39,7 +39,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // مراقبة حالة التحميل
     final state = ref.watch(downloadProvider);
 
     return Scaffold(
@@ -65,7 +64,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // البطاقة العلوية (تصميم)
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -89,12 +87,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   const SizedBox(height: 15),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(FontAwesomeIcons.youtube, color: Colors.red, size: 20),
-                      const SizedBox(width: 15),
-                      const Icon(FontAwesomeIcons.tiktok, color: Colors.white, size: 20),
-                      const SizedBox(width: 15),
-                      const Icon(FontAwesomeIcons.instagram, color: Colors.pink, size: 20),
+                    children: const [
+                      // تم استخدام FaIcon هنا بدلاً من Icon
+                      FaIcon(FontAwesomeIcons.youtube, color: Colors.red, size: 20),
+                      SizedBox(width: 15),
+                      FaIcon(FontAwesomeIcons.tiktok, color: Colors.white, size: 20),
+                      SizedBox(width: 15),
+                      FaIcon(FontAwesomeIcons.instagram, color: Colors.pink, size: 20),
                     ],
                   )
                 ],
@@ -102,7 +101,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             const SizedBox(height: 30),
 
-            // حقل إدخال الرابط
             TextField(
               controller: _urlController,
               decoration: InputDecoration(
@@ -121,7 +119,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             const SizedBox(height: 16),
 
-            // زر التحليل أو التحميل
             SizedBox(
               width: double.infinity,
               height: 50,
@@ -143,18 +140,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
             const SizedBox(height: 20),
 
-            // عرض الخطأ إن وجد
             if (state.errorMessage != null)
               Text(state.errorMessage!, style: const TextStyle(color: Colors.red)),
 
-            // عرض نتائج التحليل والجودات
             if (state.videoTitle != null) ...[
               Text('الفيديو: ${state.videoTitle}', 
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), 
                 textAlign: TextAlign.center),
               const SizedBox(height: 15),
               
-              // عرض شريط التحميل أثناء التحميل
               if (state.progress != null)
                 Column(
                   children: [
@@ -168,19 +162,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               if (state.isCompleted)
                 const Text('✅ تم التحميل بنجاح!', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
 
-              // عرض أزرار الجودات المتاحة
-              if (!state.isLoading && !state.isCompleted && state.availableFormats != null)
+              if (!state.isLoading && !state.isCompleted && state.availableQualities != null)
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
                   alignment: WrapAlignment.center,
-                  children: state.availableFormats!.map((format) {
+                  children: state.availableQualities!.map((quality) { // تم التعديل هنا
                     return ElevatedButton(
                       style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cardBg),
                       onPressed: () {
-                        ref.read(downloadProvider.notifier).downloadVideo(_urlController.text, format);
+                        ref.read(downloadProvider.notifier).downloadVideo(_urlController.text, quality);
                       },
-                      child: Text(format.qualityLabel ?? 'جودة غير معروفة', style: const TextStyle(color: AppTheme.secondary)),
+                      // تم تعديل اسم المتغير إلى quality.name
+                      child: Text(quality.name, style: const TextStyle(color: AppTheme.secondary)),
                     );
                   }).toList(),
                 ),
