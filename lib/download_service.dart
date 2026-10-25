@@ -11,7 +11,7 @@ class DownloadState {
   final bool isLoading;
   final String? errorMessage;
   final String? videoTitle;
-  final String? originalUrl; // أضفنا هذا لحفظ الرابط الأصلي
+  final String? originalUrl;
   final String? directDownloadUrl;
   final List<VideoQuality>? availableQualities;
   final double? progress;
@@ -78,8 +78,6 @@ class DownloadNotifier extends StateNotifier<DownloadState> {
       state = state.copyWith(errorMessage: 'الرجاء إدخال رابط صحيح', isLoading: false);
       return;
     }
-    
-    // حفظ الرابط الأصلي في الحالة لاستخدامه لاحقاً في التحميل
     state = DownloadState(isLoading: true, originalUrl: url);
     final platform = _getPlatform(url);
 
@@ -92,7 +90,7 @@ class DownloadNotifier extends StateNotifier<DownloadState> {
         await _fetchCobaltInfo(url);
       }
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: 'تعذر جلب الفيديو، تأكد من الرابط أو حاول لاحقاً');
+      state = state.copyWith(isLoading: false, errorMessage: 'تعذر جلب الفيديو: $e');
     }
   }
 
@@ -100,9 +98,12 @@ class DownloadNotifier extends StateNotifier<DownloadState> {
     final video = await _yt.videos.get(url);
     final manifest = await _yt.videos.streamsClient.getManifest(url);
     
-    // جلب الجودات التي تحتوي على فيديو وصوت (حتى 720p)
     final muxedStreams = manifest.muxed;
-    final qualities = muxedStreams.map((e) => e.quality).toSet().toList();
+    final qualities = muxedStreams
+        .map((e) => e.videoQuality)
+        .whereType<VideoQuality>()
+        .toSet()
+        .toList();
     qualities.sort((a, b) => b.index.compareTo(a.index));
 
     state = state.copyWith(
@@ -156,7 +157,6 @@ class DownloadNotifier extends StateNotifier<DownloadState> {
 
     try {
       final dir = await getTemporaryDirectory();
-      // تنظيف اسم الملف من الرموز الغريبة
       final safeTitle = (state.videoTitle ?? 'video').replaceAll(RegExp(r'[^\w\s]+'), '');
       final fileName = '${safeTitle}_${DateTime.now().millisecondsSinceEpoch}.mp4';
       final tempFile = File(p.join(dir.path, fileName));
@@ -164,18 +164,19 @@ class DownloadNotifier extends StateNotifier<DownloadState> {
       if (state.platform == 'youtube') {
         if (quality == null) throw Exception('الرجاء اختيار الجودة');
         
-        // استخدام الرابط الأصلي وليس العنوان!
         final manifest = await _yt.videos.streamsClient.getManifest(state.originalUrl!);
-        final streamInfo = manifest.muxed.withQuality(quality);
         
-        // جلب البث (Stream) من يوتيوب
+        final streamInfo = manifest.muxed.firstWhere(
+          (e) => e.videoQuality == quality,
+          orElse: () => manifest.muxed.first, 
+        );
+
         final stream = _yt.videos.streamsClient.get(streamInfo);
         final fileSink = tempFile.openWrite();
         
         var receivedBytes = 0;
         final totalBytes = streamInfo.size.totalBytes;
 
-        // كتابة البث في الملف وحساب نسبة التحميل
         await for (final chunk in stream) {
           fileSink.add(chunk);
           receivedBytes += chunk.length;
@@ -186,7 +187,6 @@ class DownloadNotifier extends StateNotifier<DownloadState> {
         await fileSink.close();
         
       } else {
-        // للمنصات الأخرى نستخدم Dio للتحميل المباشر
         if (state.directDownloadUrl == null) throw Exception('لا يوجد رابط تحميل');
         
         await _dio.download(
@@ -200,10 +200,8 @@ class DownloadNotifier extends StateNotifier<DownloadState> {
         );
       }
 
-      // حفظ الفيديو في الاستوديو (معرض الصور)
       await Gal.putVideo(tempFile.path, album: 'AbsStream');
       
-      // حذف الملف المؤقت بعد الحفظ بنجاح
       if (await tempFile.exists()) {
         await tempFile.delete();
       }
