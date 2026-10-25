@@ -1,13 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <!-- صلاحية الإنترنت (الأهم لحل الخطأ الأحمر) -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- صلاحيات التخزين للإصدارات القديمة (أندرويد 12 وما دون) -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+
+    <!-- صلاحيات التخزين للإصدارات الحديثة (أندرويد 13 وما فوق) -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
     <application
         android:requestLegacyExternalStorage="true"
-        android:label="abs_stream"
-        android:icon="@drawable/ic_launcher"
+        android:label="AbsStream"
+        android:icon="@mipmap/ic_launcher"
         android:theme="@style/NormalTheme">
         <activity
             android:name=".MainActivity"
