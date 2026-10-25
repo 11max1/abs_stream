@@ -152,63 +152,85 @@ class DownloadNotifier extends StateNotifier<DownloadState> {
     }
   }
 
-  Future<void> downloadMedia({VideoQuality? quality}) async {
-    state = state.copyWith(isLoading: true, progress: 0.0, isCompleted: false);
+   Future<void> downloadMedia({VideoQuality? quality}) async {
+  // 1. تفعيل حالة التحميل
+  state = state.copyWith(isLoading: true, progress: 0.0, isCompleted: false);
 
-    try {
-      final dir = await getTemporaryDirectory();
-      final safeTitle = (state.videoTitle ?? 'video').replaceAll(RegExp(r'[^\w\s]+'), '');
-      final fileName = '${safeTitle}_${DateTime.now().millisecondsSinceEpoch}.mp4';
-      final tempFile = File(p.join(dir.path, fileName));
-
-      if (state.platform == 'youtube') {
-        if (quality == null) throw Exception('الرجاء اختيار الجودة');
-        
-        final manifest = await _yt.videos.streamsClient.getManifest(state.originalUrl!);
-        
-        final streamInfo = manifest.muxed.firstWhere(
-          (e) => e.videoQuality == quality,
-          orElse: () => manifest.muxed.first, 
-        );
-
-        final stream = _yt.videos.streamsClient.get(streamInfo);
-        final fileSink = tempFile.openWrite();
-        
-        var receivedBytes = 0;
-        final totalBytes = streamInfo.size.totalBytes;
-
-        await for (final chunk in stream) {
-          fileSink.add(chunk);
-          receivedBytes += chunk.length;
-          if (totalBytes > 0) {
-            state = state.copyWith(progress: receivedBytes / totalBytes);
-          }
-        }
-        await fileSink.close();
-        
-      } else {
-        if (state.directDownloadUrl == null) throw Exception('لا يوجد رابط تحميل');
-        
-        await _dio.download(
-          state.directDownloadUrl!,
-          tempFile.path,
-          onReceiveProgress: (received, total) {
-            if (total != -1) {
-              state = state.copyWith(progress: received / total);
-            }
-          },
-        );
-      }
-
-      await Gal.putVideo(tempFile.path, album: 'AbsStream');
-      
-      if (await tempFile.exists()) {
-        await tempFile.delete();
-      }
-
-      state = state.copyWith(isLoading: false, isCompleted: true, progress: 1.0);
-    } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: 'فشل التحميل: $e');
+  try {
+    // 2. طلب إذن الوصول للاستوديو (قبل بدء التحميل)
+    bool hasAccess = await Gal.hasAccess();
+    if (!hasAccess) {
+      hasAccess = await Gal.requestAccess();
     }
+    
+    // إذا رفض المستخدم الإذن، نوقف العملية ونظهر رسالة
+    if (!hasAccess) {
+      state = state.copyWith(
+        isLoading: false, 
+        errorMessage: 'يرجى السماح للتطبيق بالوصول للاستوديو حتى يتمكن من حفظ الفيديو.'
+      );
+      return; // الخروج من الدالة
+    }
+
+    // 3. تجهيز مسار الملف المؤقت
+    final dir = await getTemporaryDirectory();
+    final safeTitle = (state.videoTitle ?? 'video').replaceAll(RegExp(r'[^\w\s]+'), '');
+    final fileName = '${safeTitle}_${DateTime.now().millisecondsSinceEpoch}.mp4';
+    final tempFile = File(p.join(dir.path, fileName));
+
+    // 4. بدء التحميل حسب المنصة
+    if (state.platform == 'youtube') {
+      if (quality == null) throw Exception('الرجاء اختيار الجودة');
+      
+      final manifest = await _yt.videos.streamsClient.getManifest(state.originalUrl!);
+      
+      final streamInfo = manifest.muxed.firstWhere(
+        (e) => e.videoQuality == quality,
+        orElse: () => manifest.muxed.first, 
+      );
+
+      final stream = _yt.videos.streamsClient.get(streamInfo);
+      final fileSink = tempFile.openWrite();
+      
+      var receivedBytes = 0;
+      final totalBytes = streamInfo.size.totalBytes;
+
+      await for (final chunk in stream) {
+        fileSink.add(chunk);
+        receivedBytes += chunk.length;
+        if (totalBytes > 0) {
+          state = state.copyWith(progress: receivedBytes / totalBytes);
+        }
+      }
+      await fileSink.close();
+      
+    } else {
+      if (state.directDownloadUrl == null) throw Exception('لا يوجد رابط تحميل');
+      
+      await _dio.download(
+        state.directDownloadUrl!,
+        tempFile.path,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            state = state.copyWith(progress: received / total);
+          }
+        },
+      );
+    }
+
+    // 5. حفظ الفيديو في الاستوديو (سيطلب الإذن هنا أيضاً إذا لزم الأمر)
+    await Gal.putVideo(tempFile.path, album: 'AbsStream');
+    
+    // 6. مسح الملف المؤقت بعد الحفظ
+    if (await tempFile.exists()) {
+      await tempFile.delete();
+    }
+
+    // 7. إعلان النجاح
+    state = state.copyWith(isLoading: false, isCompleted: true, progress: 1.0);
+    
+  } catch (e) {
+    // في حال حدوث أي خطأ أثناء التحميل أو الحفظ
+    state = state.copyWith(isLoading: false, errorMessage: 'فشل التحميل: $e');
   }
 }
