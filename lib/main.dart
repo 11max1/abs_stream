@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:clipboard/clipboard.dart';
-import 'package:yt_downloader/yt_downloader.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart'; // ضروري لقراءة نوع الجودة
 import 'theme.dart';
 import 'download_service.dart';
 
@@ -38,6 +38,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final TextEditingController _urlController = TextEditingController();
 
   @override
+  void dispose() {
+    _urlController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final state = ref.watch(downloadProvider);
 
@@ -45,7 +51,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('AbsStream', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('AbsStream',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
           Container(
@@ -56,7 +63,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.green),
             ),
-            child: const Center(child: Text('جاهز', style: TextStyle(color: Colors.green, fontSize: 12))),
+            child: const Center(
+                child: Text('جاهز',
+                    style: TextStyle(color: Colors.green, fontSize: 12))),
           )
         ],
       ),
@@ -64,6 +73,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            // البطاقة العلوية
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -77,23 +87,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               child: Column(
                 children: [
-                  const Text('منزل الفيديوهات والصوتيات الذكي ✨', 
-                    textAlign: TextAlign.center, 
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text('منزل الفيديوهات والصوتيات الذكي ✨',
+                      textAlign: TextAlign.center,
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
-                  Text('انسخ رابط الفيديو وسيتكفل AbsStream بجلبه لك.', 
-                    textAlign: TextAlign.center, 
-                    style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                  Text('انسخ رابط الفيديو وسيتكفل AbsStream بجلبه لك.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey[400], fontSize: 12)),
                   const SizedBox(height: 15),
-                  Row(
+                  const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      // تم استخدام FaIcon هنا بدلاً من Icon
-                      FaIcon(FontAwesomeIcons.youtube, color: Colors.red, size: 20),
+                    children: [
+                      FaIcon(FontAwesomeIcons.youtube,
+                          color: Colors.red, size: 20),
                       SizedBox(width: 15),
-                      FaIcon(FontAwesomeIcons.tiktok, color: Colors.white, size: 20),
+                      FaIcon(FontAwesomeIcons.tiktok,
+                          color: Colors.white, size: 20),
                       SizedBox(width: 15),
-                      FaIcon(FontAwesomeIcons.instagram, color: Colors.pink, size: 20),
+                      FaIcon(FontAwesomeIcons.instagram,
+                          color: Colors.pink, size: 20),
                     ],
                   )
                 ],
@@ -101,13 +114,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             const SizedBox(height: 30),
 
+            // حقل إدخال الرابط
             TextField(
               controller: _urlController,
               decoration: InputDecoration(
                 hintText: 'www.youtube.com/watch?v=...',
                 filled: true,
                 fillColor: AppTheme.cardBg,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.link, color: AppTheme.secondary),
                   onPressed: () async {
@@ -119,13 +135,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             const SizedBox(height: 16),
 
+            // زر التحليل
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: state.isLoading 
                   ? null 
@@ -140,16 +158,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
             const SizedBox(height: 20),
 
+            // عرض الخطأ إن وجد
             if (state.errorMessage != null)
               Text(state.errorMessage!, style: const TextStyle(color: Colors.red)),
 
+            // عرض نتائج التحليل والجودات
             if (state.videoTitle != null) ...[
               Text('الفيديو: ${state.videoTitle}', 
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), 
                 textAlign: TextAlign.center),
               const SizedBox(height: 15),
               
-              if (state.progress != null)
+              // شريط التحميل
+              if (state.progress != null && !state.isCompleted)
                 Column(
                   children: [
                     LinearProgressIndicator(value: state.progress, color: AppTheme.secondary, minHeight: 8),
@@ -159,25 +180,54 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ],
                 ),
 
+              // رسالة النجاح
               if (state.isCompleted)
-                const Text('✅ تم التحميل بنجاح!', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-
-              if (!state.isLoading && !state.isCompleted && state.availableQualities != null)
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  alignment: WrapAlignment.center,
-                  children: state.availableQualities!.map((quality) { // تم التعديل هنا
-                    return ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cardBg),
-                      onPressed: () {
-                        ref.read(downloadProvider.notifier).downloadVideo(_urlController.text, quality);
-                      },
-                      // تم تعديل اسم المتغير إلى quality.name
-                      child: Text(quality.name, style: const TextStyle(color: AppTheme.secondary)),
-                    );
-                  }).toList(),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: Text('✅ تم الحفظ في الاستوديو بنجاح!', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
                 ),
+
+              // ----------------------------------------------------
+              // تعديل هام: التفرقة بين يوتيوب (جودات) وباقي المنصات (زر واحد)
+              // ----------------------------------------------------
+              if (!state.isLoading && !state.isCompleted) ...[
+                
+                // 1. يوتيوب: عرض أزرار الجودات
+                if (state.availableQualities != null && state.availableQualities!.isNotEmpty)
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    alignment: WrapAlignment.center,
+                    children: state.availableQualities!.map((quality) {
+                      return ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cardBg),
+                        onPressed: () {
+                          // تم تعديل اسم الدالة إلى downloadMedia
+                          ref.read(downloadProvider.notifier).downloadMedia(quality: quality);
+                        },
+                        child: Text(quality.name, style: const TextStyle(color: AppTheme.secondary)),
+                      );
+                    }).toList(),
+                  )
+                
+                // 2. المنصات الأخرى (تيك توك/إنستغرام): عرض زر تحميل مباشر
+                else if (state.directDownloadUrl != null)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.secondary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () {
+                        ref.read(downloadProvider.notifier).downloadMedia();
+                      },
+                      icon: const Icon(Icons.download, color: Colors.black),
+                      label: const Text('تحميل الفيديو الآن', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+              ],
             ],
           ],
         ),
